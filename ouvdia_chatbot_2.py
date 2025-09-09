@@ -16,7 +16,7 @@ data_hora_atual = datetime.now().strftime("%Y-%m-%d")
 # ========== Configuração do logging ==========
 
 # Diretório para os logs
-diretorio = Path('/ouvdia/logs')
+diretorio = Path('/ouvdia/root/logs')
 diretorio.mkdir(parents=True, exist_ok=True)
 
 # Nome do arquivo de log com data e hora
@@ -298,7 +298,7 @@ class InterfaceUsuario:
 
             with gr.Row():
                 gr.Image(
-                    value='/ouvdia/assets/ouvdia_logo.jpeg',
+                    value='/ouvdia/root/assets/ouvdia_logo.jpeg',
                     type="filepath",
                     label='OuvdIA',
                     show_label=False,
@@ -306,7 +306,7 @@ class InterfaceUsuario:
                     elem_id="image-1"
                 )
                 gr.Image(
-                    value="/ouvdia/assets/grafos_capa_3.jpeg",
+                    value="/ouvdia/root/assets/grafos_capa_3.jpeg",
                     type="filepath",
                     label="Assistente Inteligente",
                     show_label=False,
@@ -351,8 +351,8 @@ class InterfaceUsuario:
                 label="Histórico do Chat",
                 type="messages",
                 avatar_images=(
-                    '/ouvdia/assets/avatar_usuario.png',
-                    '/ouvdia/assets/avatar_chatbot.svg'
+                    '/ouvdia/root/assets/avatar_usuario.png',
+                    '/ouvdia/root/assets/avatar_chatbot.svg'
                 ),
             )
 
@@ -408,7 +408,7 @@ if __name__ == "__main__":
     try:
 
         # Carrega o arquivo USUARIOS_VALIDOS.env que contém variáveis de ambiente
-        load_dotenv('/ouvdia/USUARIOS_VALIDOS.env')
+        load_dotenv('/ouvdia/root/USUARIOS_VALIDOS.env')
 
         # Carrega a variável contendo os usuários válidos
         usuarios_validos_raw = os.getenv('USUARIOS_VALIDOS')
@@ -435,7 +435,7 @@ if __name__ == "__main__":
     # ========== Inicialização do modelo e da interface ==========
 
     # Modelo LLM
-    modelo_id = "gildocouto/Llama-3-8B-Instruct-AWQ-4bit"
+    modelo_id = "meta-llama/Llama-3-8B-Instruct"
 
     # Detecta quantização
     quantizacao_detectada = None
@@ -451,8 +451,8 @@ if __name__ == "__main__":
     # Inicializa o modelo LLM
     llm = ModeloLinguagemContínuo(
         modelo=modelo_id, 
-        quantizacao=quantizacao_detectada, 
-        tipo_dados="float16")
+        quantizacao=None,          # Desativa explicitamente a quantização
+        tipo_dados="bfloat16")     # Usa o tipo de dado otimizado para a V100
 
     # Obtém o tokenizador do modelo
     tokenizador = llm.llm_motor.tokenizer.tokenizer
@@ -475,7 +475,7 @@ if __name__ == "__main__":
     interface_pronta = interface_usuario.iniciar()
 
     # ========== Lançar a interface com autenticação com tuplas de usuários válidos ==========
-    imagem_icone_url = '/ouvdia/assets/rfb_logo_1.ico'
+    imagem_icone_url = '/ouvdia/root/assets/rfb_logo_1.ico'
     interface_pronta.launch(
     share=False, 
     auth=usuarios_validos,
