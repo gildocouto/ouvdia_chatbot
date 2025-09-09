@@ -1,4 +1,4 @@
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, AutoConfig
 from typing import List, Optional, Union, Dict, Iterator
 from vllm.engine.llm_engine import LLMEngine
 from vllm.engine.arg_utils import EngineArgs
@@ -6,7 +6,6 @@ from vllm.usage.usage_lib import UsageContext
 from vllm.outputs import RequestOutput
 from vllm import SamplingParams
 from vllm.utils import Counter
-from huggingface_hub import login
 from dotenv import load_dotenv
 import gradio as gr
 import logging, os
@@ -403,17 +402,10 @@ class InterfaceUsuario:
 if __name__ == "__main__":
 
     # ========== Carregar variáveis de ambiente ==========
+
+    usuarios_validos: list[tuple[str, str]] = []  # fallback seguro
+
     try:
-        # Carrega o arquivo HUGGINGFACE_TOKEN.env que contém variáveis de ambiente
-        load_dotenv('/ouvdia/HUGGINGFACE_TOKEN.env')
-
-        # Carrega o token do HuggingFace
-        hf_token = os.getenv('HUGGINGFACE_TOKEN')
-
-        # Verifica se o token foi carregado corretamente
-        if not hf_token:
-            raise ValueError("A variável de ambiente 'HUGGINGFACE_TOKEN' não foi definida. "
-                             "Certifique-se de que ela está presente no arquivo HUGGINGFACE_TOKEN.env.")
 
         # Carrega o arquivo USUARIOS_VALIDOS.env que contém variáveis de ambiente
         load_dotenv('/ouvdia/USUARIOS_VALIDOS.env')
@@ -435,26 +427,32 @@ if __name__ == "__main__":
                 raise ValueError(f"A entrada '{u}' em 'USUARIOS_VALIDOS' está no formato incorreto. "
                                  "Cada entrada deve estar no formato 'usuario:senha'.")
 
-        # Exibe os usuários válidos para conferência
-        #print("Usuários válidos carregados com sucesso:")
-        #for usuario, senha in usuarios_validos:
-        #    print(f" - Usuário: {usuario}, Senha: {senha}")
-
     except Exception as e:
         # Exibe mensagens de erro detalhadas
         print(f"Erro ao carregar variáveis de ambiente: {e}")
+        # mantém usuarios_validos = [] como fallback
 
     # ========== Inicialização do modelo e da interface ==========
 
-    # Logando no HuggingFace Hub (caso necessário para acessar modelos privados)
-    login(token=hf_token)
+    # Modelo LLM
+    modelo_id = "gildocouto/Llama-3-8B-Instruct-AWQ-4bit"
+
+    # Detecta quantização
+    quantizacao_detectada = None
+    try:
+        cfg = AutoConfig.from_pretrained(modelo_id, trust_remote_code=True)
+        qcfg = getattr(cfg, "quantization_config", None)
+        if isinstance(qcfg, dict):
+            quantizacao_detectada = qcfg.get("quant_method") or qcfg.get("quantization_method")
+        logging.info(f"Quantização detectada: {quantizacao_detectada}")
+    except Exception as e:
+        logging.warning(f"Não foi possível ler quantization_config: {e}")
 
     # Inicializa o modelo LLM
     llm = ModeloLinguagemContínuo(
-        modelo="gildocouto/Llama-3-8B-Instruct-AWQ-4bit",
-        quantizacao="awq_marlin",
-        tipo_dados="float16",
-    )
+        modelo=modelo_id, 
+        quantizacao=quantizacao_detectada, 
+        tipo_dados="float16")
 
     # Obtém o tokenizador do modelo
     tokenizador = llm.llm_motor.tokenizer.tokenizer
